@@ -22,5 +22,7 @@ all:
 	$(CROSS)gcc $(CFLAGS) -c kernel/uart.c
 	$(CROSS)gcc $(CFLAGS) -c kernel/string.c
 	$(CROSS)gcc $(CFLAGS) -c kernel/memory.c
+	$(CROSS)gcc $(CFLAGS) -c kernel/trap.c    
+	$(CROSS)gcc $(CFLAGS) -c kernel/timer.c
 
 	$(CROSS)ld -T linker.ld $(OBJS) -o kernel.elf
