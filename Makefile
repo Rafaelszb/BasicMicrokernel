@@ -9,7 +9,7 @@ CFLAGS = -march=rv64gc -mabi=lp64 \
          -Wall -Iinclude
 
 OBJS = start.o trap_entry.o context.o \
-       main.o task.o scheduler.o uart.o string.o memory.o
+       main.o task.o scheduler.o uart.o string.o memory.o trap.o timer.o
 
 all:
 	$(CROSS)gcc $(CFLAGS) -c boot/start.S
