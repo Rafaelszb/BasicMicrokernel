@@ -32,7 +32,7 @@ void schedule_from_trap(uint64_t *frame)
     int next = current_algo();
 /* TODO:
 * Copiar frame -> tasks[prev].regs*/
-    for(int i = 0; i < 32; i++){
+    for(int i = 0; i < 31; i++){
         tasks[prev].regs[i] = frame[i];
 }
 /* TODO:
@@ -44,7 +44,7 @@ void schedule_from_trap(uint64_t *frame)
     current = next;
 /* TODO:
 * Copiar tasks[next].regs -> frame*/
-    for(int i = 0; i < 32; i++){
+    for(int i = 0; i < 31; i++){
         frame[i] = tasks[next].regs[i];
     }
 /* TODO:
