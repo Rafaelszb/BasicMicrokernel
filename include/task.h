@@ -19,5 +19,5 @@ extern TCB tasks[MAX_TASKS];
 extern int task_count;
 
 void xTaskCreate(void (*task)(void),
-                 uint64_t stack_size,
+                 uint32_t stack_size,
                  int priority);
