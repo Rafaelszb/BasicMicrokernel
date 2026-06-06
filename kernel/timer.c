@@ -9,7 +9,7 @@ static inline void sbi_set_timer(uint64_t time)
 {
   register uint64_t a0 asm("a0") = time;
   register uint64_t a6 asm("a6") = 0;
-  register uint64_t a7 asm("a7") = 0;
+  register uint64_t a7 asm("a7") = 0x54494D45;
 
   asm volatile( "ecall"      : "+r"(a0)      : "r"(a6), "r"(a7)      : "memory"  );
 }
