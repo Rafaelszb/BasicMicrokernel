@@ -15,14 +15,6 @@ void task1()
     while (1)
     {
         uart_print("Task 1 running\n");
-
-        uart_print("Memory used: ");
-        uart_print_uint(memory_used());
-        uart_print(" bytes\n");
-
-        uart_print("Memory free: ");
-        uart_print_uint(memory_free());
-        uart_print(" bytes\n\n");
     }
 }
 
@@ -31,14 +23,6 @@ void task2()
     while (1)
     {
         uart_print("Task 2 running\n");
-
-        uart_print("Memory used: ");
-        uart_print_uint(memory_used());
-        uart_print(" bytes\n");
-
-        uart_print("Memory free: ");
-        uart_print_uint(memory_free());
-        uart_print(" bytes\n\n");
     }
 }
 
