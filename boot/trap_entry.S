@@ -4,7 +4,6 @@ trap_entry:
 addi sp, sp, -256
 # TODO:
 # Salvar x1..x31 na stack.
-addi sp, sp, -256
 
     sd x1,  8(sp)       # ra (Return Address)
     # x2 é o SP, salvamos o valor dele ANTES do trap (sp + 256)
