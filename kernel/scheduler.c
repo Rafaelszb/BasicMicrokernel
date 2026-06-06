@@ -1,6 +1,9 @@
 #include "scheduler.h"
 #include "task.h"
 
+extern TCB tasks[];
+extern int task_count;
+
 extern void context_switch(void*, void*);
 
 static int current = 0;
