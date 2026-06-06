@@ -33,10 +33,10 @@ void timer_init(uint64_t interval)
   timer_next();
   /* TODO:
   * Habilitar STIE no CSR sie.*/
-  uint64_t sie_bit = (1 << 5);
+  uint64_t sie_bit = (1ULL << 5);
   asm volatile("csrs sie, %0" :: "r"(sie_bit));
 
   /* Habilitar SIE global em sstatus. */
-  uint64_t sstatus_bit = (1 << 1);
+  uint64_t sstatus_bit = (1ULL << 1);
   asm volatile("csrs sstatus, %0" :: "r"(sstatus_bit));
 }
