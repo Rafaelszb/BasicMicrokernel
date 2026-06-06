@@ -7,6 +7,8 @@
 typedef struct
 {
     uint64_t regs[31];   // x1–x31 (x0 é zero)
+    uint64_t sepc;
+
     void (*entry)(void);
     int priority;
     uint8_t *stack;
