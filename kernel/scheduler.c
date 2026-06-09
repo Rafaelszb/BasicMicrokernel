@@ -35,7 +35,7 @@ void schedule_from_trap(uint64_t *frame)
     }
 
     /* Copiar frame -> tasks[prev].regs (Limite corrigido para 31) */
-    for(int i = 0; i < 31; i++){
+    for(int i = 0; i < 32; i++){
         tasks[prev].regs[i] = frame[i];
     }
 
@@ -47,7 +47,7 @@ void schedule_from_trap(uint64_t *frame)
     current = next;
 
     /* Copiar tasks[next].regs -> frame */
-    for(int i = 0; i < 31; i++){
+    for(int i = 0; i < 32; i++){
         frame[i] = tasks[next].regs[i];
     }
 
