@@ -2,22 +2,21 @@
 
 static uint64_t tick_interval = 100000;
 
-/* Implementação da chamada SBI set_timer utilizando a convenção do RISC-V */
+/* Implementação da chamada SBI set_timer utilizando a especificação moderna (v0.2+) */
 static inline void sbi_set_timer(uint64_t time)
 {
     #if __riscv_xlen == 64
-    // Em sistemas de 64 bits, o argumento vai direto no registrador a0
     register unsigned long a0 __asm__("a0") = time;
-    register unsigned long a7 __asm__("a7") = 0; // EID para Set Timer (SBI Extension ID 0x00)
+    register unsigned long a6 __asm__("a6") = 0;          // FID para set_timer
+    register unsigned long a7 __asm__("a7") = 0x54494D45; // EID oficial da extensão "TIME"
 
     __asm__ volatile (
         "ecall"
         : "+r" (a0)
-        : "r" (a7)
+        : "r" (a6), "r" (a7)
         : "memory"
     );
     #else
-    // Caso esteja em um ambiente 32-bits, seriam necessários a0 e a1 para os 64-bits de 'time'
     #error "Suporte apenas para RISC-V 64-bits configurado."
     #endif
 }
@@ -43,9 +42,10 @@ void timer_init(uint64_t interval)
 
     /* * Habilitar STIE (Supervisor Timer Interrupt Enable) no CSR sie (bit 5)
      * Habilitar SIE (Supervisor Interrupt Enable) global no CSR sstatus (bit 1)
+     * Uso de 1ULL garante que a máscara seja tratada nativamente em 64 bits
      */
-    unsigned long sie_mask = (1 << 5);   // STIE bit
-    unsigned long sstatus_mask = (1 << 1); // SIE bit
+    unsigned long sie_mask = (1ULL << 5);   // STIE bit
+    unsigned long sstatus_mask = (1ULL << 1); // SIE bit
 
     __asm__ volatile (
         "csrs sie, %0" 
