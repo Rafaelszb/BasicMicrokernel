@@ -3,20 +3,23 @@
 .align 4
 
 trap_entry:
-    # 1. Troca o SP atual com o sscratch para não perder o SP original da Task
-    csrw sscratch, sp
-    
-    # 2. Aloca o frame de contexto de 256 bytes (32 registradores * 8 bytes)
+    # 1. Abre espaço na própria pilha da tarefa atual para 32 registradores (32 * 8 = 256 bytes)
     addi sp, sp, -256
 
-    # 3. Salva todos os registradores estritamente nas suas posições lógicas (0 a 31)
+    # 2. Salva o x1 (ra) imediatamente para liberar espaço de manobra
+    sd x1,  0(sp)           # frame[0] -> ra
+
+    # 3. Calcula o SP original (que é o SP atual + 256) e salva no frame[1]
+    # Usamos o x1 (ra) como temporário já que ele acabou de ser salvo com segurança!
+    addi x1, sp, 256        
+    sd x1,  8(sp)           # frame[1] -> sp original da task
+
+    # 4. Restaura o x1 (ra) original para podermos salvar seu estado real na posição dele
+    ld x1,  0(sp)
+
+    # 5. Salva todos os outros registradores sequencialmente (Mapeamento direto 0 a 31)
     sd x1,  0(sp)           # frame[0]  -> x1 (ra)
-    
-    # Recupera o SP original que guardamos em sscratch e salva no frame[1]
-    csrr x1, sscratch
-    sd x1,  8(sp)           # frame[1]  -> x2 (sp)
-    
-    # Agora salva o resto sem nenhuma manobra arriscada
+    # O frame[1] (sp) já foi salvo no passo 3!
     sd x3,  16(sp)          # frame[2]  -> gp
     sd x4,  24(sp)          # frame[3]  -> tp
     sd x5,  32(sp)          # frame[4]  -> t0
@@ -47,17 +50,17 @@ trap_entry:
     sd x30, 232(sp)         # frame[29] -> t5
     sd x31, 240(sp)         # frame[30] -> t6
 
-    # Passa o ponteiro do frame (sp atual) para o trap_handler em C
+    # 6. Passa o frame como argumento (a0) para o C
     mv a0, sp
     call trap_handler
 
-    # --- RESTAURAÇÃO DE CONTEXTO SEGURA ---
-    # Se o scheduler rodou, os dados em 'sp' agora são os da Task 2!
+    # --- RETUORNO / TROCA DE TAREFA ---
+    # Se o scheduler rodou, a memória apontada por 'sp' agora contém os dados da Task 2.
 
-    # 1. Restauramos primeiro o x1 (ra) da nova task
+    # Recupera o RA da nova tarefa
     ld x1,  0(sp)
-    
-    # 2. Restauramos todos os outros registradores (pulando x2 por enquanto)
+
+    # Recupera todos os outros registradores
     ld x3,  16(sp)
     ld x4,  24(sp)
     ld x5,  32(sp)
@@ -88,8 +91,8 @@ trap_entry:
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # 3. O Pulo do Gato: Carrega o SP definitivo da nova Task (Task 2)
-    ld sp,  8(sp)           # sp muda para a pilha limpa da Task 2!
+    # INFALÍVEL: Carrega o SP da nova tarefa diretamente no registrador sp
+    ld sp,  8(sp)
 
-    # 4. Retorna para o sepc da nova tarefa
+    # Executa o sret pulando para o sepc da nova tarefa usando a nova pilha!
     sret
