@@ -5,12 +5,8 @@ addi sp, sp, -256
 # TODO:
 # Salvar x1..x31 na stack.
 
-sd x1,  0(sp)           # frame[0]  -> x1 (ra)
-    
-    # x2 é o SP. Calculamos o valor dele antes do trap (sp + 256)
-    addi t0, sp, 256
-    sd t0,  8(sp)           # frame[1]  -> x2 (sp)
-    
+    sd x1,  0(sp)           # frame[0]  -> x1 (ra)
+    sd x2,  8(sp)           # frame[1]  -> x2 (sp)
     sd x3,  16(sp)          # frame[2]  -> gp
     sd x4,  24(sp)          # frame[3]  -> tp
     sd x5,  32(sp)          # frame[4]  -> t0
@@ -44,9 +40,8 @@ sd x1,  0(sp)           # frame[0]  -> x1 (ra)
     mv a0, sp
     call trap_handler
 
-    # --- RESTAURAÇÃO ALINHADA COM O C ---
-    ld x1,  0(sp)           # Restaura o novo ra da tarefa escolhida
-    # Ignoramos o offset 8(sp) aqui para não destruir o sp atual da pilha de trap
+    ld x1,  0(sp)     
+    ld x2,  8(sp)
     ld x3,  16(sp)
     ld x4,  24(sp)
     ld x5,  32(sp)
@@ -77,6 +72,5 @@ sd x1,  0(sp)           # frame[0]  -> x1 (ra)
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # Desaloca os 256 bytes de espaço da pilha de trap
     addi sp, sp, 256
     sret
