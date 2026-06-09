@@ -1,6 +1,6 @@
 .section .text
 .global trap_entry
-.align 4                 # Garante o alinhamento correto exigido pelo stvec
+.align 8                # Garante o alinhamento correto exigido pelo stvec
 
 trap_entry:
     # 1. Aloca espaço na stack para os 31 registradores (31 * 8 bytes = 248 bytes)
