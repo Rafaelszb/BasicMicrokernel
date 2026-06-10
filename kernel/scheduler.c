@@ -3,59 +3,57 @@
 
 extern TCB tasks[];
 extern int task_count;
-
 extern void context_switch(void*, void*);
 
 static int current = 0;
 
-/* Round-Robin padrão   */
 static int round_robin()
 {
     if (task_count <= 1) return 0;
     return (current + 1) % task_count;
 }
 
-/* Algoritmo atual   */
 static sched_algo_t current_algo = round_robin;
 
 void scheduler_set_algorithm(sched_algo_t algo)
 {
-    if (algo)
-        current_algo = algo;
+    if (algo) current_algo = algo;
 }
 
-void schedule_from_trap(uint64_t *frame)
+// ALTERAÇÃO: Agora retorna o ponteiro do novo contexto
+uint64_t* schedule_from_trap(uint64_t *frame)
 {
     int prev = current;
     int next = current_algo();
 
-    // Proteção: Se for a mesma tarefa, não há necessidade de trocar contexto
+    // Se for a mesma tarefa, retorna o mesmo frame sem alterar nada
     if (prev == next) {
-        return;
+        return frame; 
     }
 
-    /* Copiar frame -> tasks[prev].regs (Limite corrigido para 31) */
+    /* 1. Salva o contexto da tarefa antiga no vetor dela */
     for(int i = 0; i < 32; i++){
         tasks[prev].regs[i] = frame[i];
     }
 
-    /* Salvar sepc da task atual. */
+    /* Salva o sepc da task atual */
     uint64_t current_sepc;
     asm volatile("csrr %0, sepc" : "=r"(current_sepc));
     tasks[prev].sepc = current_sepc;
     
+    // Atualiza o índice global da tarefa ativa
     current = next;
 
-    /* Copiar tasks[next].regs -> frame */
-    for(int i = 0; i < 32; i++){
-        frame[i] = tasks[next].regs[i];
-    }
-
-    /* Restaurar sepc da próxima task. */
+    /* Restaurar sepc da próxima task nos registradores de controle da CPU */
     asm volatile("csrw sepc, %0" :: "r"(tasks[next].sepc));    
+
+    /* 2. RETORNO DO PULO DO GATO: 
+       Em vez de escrever no frame antigo, passamos o endereço do vetor da nova tarefa.
+       O Assembly vai ler diretamente daqui! */
+    return (uint64_t*)(tasks[next].regs);
 }
 
-/* Yield   */
+/* Yield */
 void yield()
 {
     int prev = current;
@@ -64,17 +62,13 @@ void yield()
     if (prev == next) return;
 
     current = next;
-
-    context_switch(tasks[prev].regs,
-                   tasks[next].regs);
+    context_switch(tasks[prev].regs, tasks[next].regs);
 }
  
-/* Início   */
+/* Início */
 void scheduler_start()
 {
-    if (task_count == 0)
-        return;
-
+    if (task_count == 0) return;
     current = 0;
     tasks[0].entry();
 }
