@@ -3,23 +3,24 @@
 .align 4
 
 trap_entry:
-    # 1. Abre espaço na própria pilha da tarefa atual para 32 registradores (32 * 8 = 256 bytes)
+    # 1. Aloca imediatamente o frame de 256 bytes na pilha da própria tarefa.
+    # O RISC-V exige que sp seja atualizado antes de escrever na memória.
     addi sp, sp, -256
 
-    # 2. Salva o x1 (ra) imediatamente para liberar espaço de manobra
+    # 2. Salva o x1 (ra) original na primeira posição para liberar o registrador
     sd x1,  0(sp)           # frame[0] -> ra
 
-    # 3. Calcula o SP original (que é o SP atual + 256) e salva no frame[1]
-    # Usamos o x1 (ra) como temporário já que ele acabou de ser salvo com segurança!
+    # 3. PULO DO GATO: Como 'sp' decrementou 256, o SP original era (sp + 256).
+    # Usamos o próprio x1 (que já salvamos na linha de cima) para fazer essa matemática.
     addi x1, sp, 256        
-    sd x1,  8(sp)           # frame[1] -> sp original da task
+    sd x1,  8(sp)           # frame[1] -> salva o SP antigo na posição exata x2
 
-    # 4. Restaura o x1 (ra) original para podermos salvar seu estado real na posição dele
+    # 4. Restaura o valor original de x1 (ra) a partir da memória
     ld x1,  0(sp)
 
-    # 5. Salva todos os outros registradores sequencialmente (Mapeamento direto 0 a 31)
-    sd x1,  0(sp)           # frame[0]  -> x1 (ra)
-    # O frame[1] (sp) já foi salvo no passo 3!
+    # 5. Salva todos os outros registradores sequencialmente (Mapeamento direto de 0 a 31)
+    sd x1,  0(sp)           # frame[0]  -> x1 (ra) real da tarefa
+    # O frame[1] (sp) já foi preenchido com segurança no passo 3!
     sd x3,  16(sp)          # frame[2]  -> gp
     sd x4,  24(sp)          # frame[3]  -> tp
     sd x5,  32(sp)          # frame[4]  -> t0
@@ -50,17 +51,18 @@ trap_entry:
     sd x30, 232(sp)         # frame[29] -> t5
     sd x31, 240(sp)         # frame[30] -> t6
 
-    # 6. Passa o frame como argumento (a0) para o C
+    # 6. Passa o ponteiro do frame (sp atual) em a0 para o C
     mv a0, sp
     call trap_handler
 
-    # --- RETUORNO / TROCA DE TAREFA ---
-    # Se o scheduler rodou, a memória apontada por 'sp' agora contém os dados da Task 2.
+    # --- RESTAURAÇÃO DE CONTEXTO ---
+    # Se o seu scheduler em C trocou de tarefa mudando os valores do ponteiro 'frame',
+    # o 'sp' atualizado já estará apontando para a estrutura da Task 2!
 
-    # Recupera o RA da nova tarefa
+    # Restaura o RA da tarefa destino
     ld x1,  0(sp)
 
-    # Recupera todos os outros registradores
+    # Restaura todos os registradores gerais
     ld x3,  16(sp)
     ld x4,  24(sp)
     ld x5,  32(sp)
@@ -91,8 +93,8 @@ trap_entry:
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # INFALÍVEL: Carrega o SP da nova tarefa diretamente no registrador sp
+    # 7. Restaura o SP da nova tarefa de forma atômica
     ld sp,  8(sp)
 
-    # Executa o sret pulando para o sepc da nova tarefa usando a nova pilha!
+    # Retorna executando a Task 2!
     sret
