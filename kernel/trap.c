@@ -24,7 +24,7 @@ void trap_handler(uint64_t *frame)
 
         // 2. Transfere o controle para o escalonador rotacionar as tarefas
         schedule_from_trap(frame);
-        
+        return;
     } 
     
     uart_print("Unhandled trap\n");
