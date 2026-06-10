@@ -3,20 +3,20 @@
 .align 4
 
 trap_entry:
-    # 1. Aloca o frame na pilha da tarefa atual
+    # 1. Aloca o frame de 256 bytes na pilha da tarefa atual
     addi sp, sp, -256
 
-    # 2. Salva o contexto de forma sequencial (0 a 31)
+    # 2. Salva todos os 32 registradores nas posições (0 a 31)
     sd x1,  0(sp)           # frame[0] -> ra
     
-    # Calcula e salva o SP antigo na posição frame[1]
+    # Calcula o SP antigo e põe no frame[1]
     addi x1, sp, 256        
-    sd x1,  8(sp)           # frame[1] -> sp
+    sd x1,  8(sp)           # frame[1] -> sp original
     
-    # Restaura o x1 para salvar o valor real dele abaixo
+    # Restaura o x1 temporário
     ld x1,  0(sp)
 
-    # Salva o restante dos registradores
+    # Salva o resto do bloco
     sd x1,  0(sp)
     sd x3,  16(sp)
     sd x4,  24(sp)
@@ -48,16 +48,13 @@ trap_entry:
     sd x30, 232(sp)
     sd x31, 240(sp)
 
-    # 3. Chama a função em C passando o SP atual em a0
+    # 3. Chama o trap_handler (void) passando o frame atual em a0
     mv a0, sp
     call trap_handler
 
-    # O MIGRATION POINT: 
-    # A função schedule_from_trap retornou o ponteiro do NOVO contexto dentro de 'a0'.
-    # Mudamos o registrador SP para apontar para esse novo bloco de memória!
-    mv sp, a0
-
-    # 4. Restaura os registradores a partir da nova estrutura de dados (Task 2)
+    # 4. Restaura os registradores normais
+    # NOTA: Se o seu scheduler rodou (passo 4 do C), os valores contidos 
+    # aqui na memória já foram sobrescrevidos com os dados da Task 2!
     ld x1,  0(sp)
     ld x3,  16(sp)
     ld x4,  24(sp)
@@ -89,8 +86,9 @@ trap_entry:
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # 5. Restaura o SP real que a Task 2 usava antes de ser interrompida
+    # 5. O CHAVEAMENTO FÍSICO: Carrega o SP modificado pelo passo 4 do seu C.
+    # O registrador SP agora pula atômicamente para o endereço da pilha da Task 2!
     ld sp,  8(sp)
 
-    # 6. Salta para a Task 2 de forma nativa e sem riscos de corrupção
+    # 6. Salta para a nova tarefa reabilitando interrupções
     sret
