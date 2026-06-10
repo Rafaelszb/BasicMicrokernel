@@ -3,66 +3,62 @@
 .align 4
 
 trap_entry:
-    # 1. Aloca imediatamente o frame de 256 bytes na pilha da própria tarefa.
-    # O RISC-V exige que sp seja atualizado antes de escrever na memória.
+    # 1. Aloca o frame na pilha da tarefa atual
     addi sp, sp, -256
 
-    # 2. Salva o x1 (ra) original na primeira posição para liberar o registrador
+    # 2. Salva o contexto de forma sequencial (0 a 31)
     sd x1,  0(sp)           # frame[0] -> ra
-
-    # 3. PULO DO GATO: Como 'sp' decrementou 256, o SP original era (sp + 256).
-    # Usamos o próprio x1 (que já salvamos na linha de cima) para fazer essa matemática.
+    
+    # Calcula e salva o SP antigo na posição frame[1]
     addi x1, sp, 256        
-    sd x1,  8(sp)           # frame[1] -> salva o SP antigo na posição exata x2
-
-    # 4. Restaura o valor original de x1 (ra) a partir da memória
+    sd x1,  8(sp)           # frame[1] -> sp
+    
+    # Restaura o x1 para salvar o valor real dele abaixo
     ld x1,  0(sp)
 
-    # 5. Salva todos os outros registradores sequencialmente (Mapeamento direto de 0 a 31)
-    sd x1,  0(sp)           # frame[0]  -> x1 (ra) real da tarefa
-    # O frame[1] (sp) já foi preenchido com segurança no passo 3!
-    sd x3,  16(sp)          # frame[2]  -> gp
-    sd x4,  24(sp)          # frame[3]  -> tp
-    sd x5,  32(sp)          # frame[4]  -> t0
-    sd x6,  40(sp)          # frame[5]  -> t1
-    sd x7,  48(sp)          # frame[6]  -> t2
-    sd x8,  56(sp)          # frame[7]  -> s0/fp
-    sd x9,  64(sp)          # frame[8]  -> s1
-    sd x10, 72(sp)          # frame[9]  -> a0
-    sd x11, 80(sp)          # frame[10] -> a1
-    sd x12, 88(sp)          # frame[11] -> a2
-    sd x13, 96(sp)          # frame[12] -> a3
-    sd x14, 104(sp)         # frame[13] -> a4
-    sd x15, 112(sp)         # frame[14] -> a5
-    sd x16, 120(sp)         # frame[15] -> a6
-    sd x17, 128(sp)         # frame[16] -> a7
-    sd x18, 136(sp)         # frame[17] -> s2
-    sd x19, 144(sp)         # frame[18] -> s3
-    sd x20, 152(sp)         # frame[19] -> s4
-    sd x21, 160(sp)         # frame[20] -> s5
-    sd x22, 168(sp)         # frame[21] -> s6
-    sd x23, 176(sp)         # frame[22] -> s7
-    sd x24, 184(sp)         # frame[23] -> s8
-    sd x25, 192(sp)         # frame[24] -> s9
-    sd x26, 200(sp)         # frame[25] -> s10
-    sd x27, 208(sp)         # frame[26] -> s11
-    sd x28, 216(sp)         # frame[27] -> t3
-    sd x29, 224(sp)         # frame[28] -> t4
-    sd x30, 232(sp)         # frame[29] -> t5
-    sd x31, 240(sp)         # frame[30] -> t6
+    # Salva o restante dos registradores
+    sd x1,  0(sp)
+    sd x3,  16(sp)
+    sd x4,  24(sp)
+    sd x5,  32(sp)
+    sd x6,  40(sp)
+    sd x7,  48(sp)
+    sd x8,  56(sp)
+    sd x9,  64(sp)
+    sd x10, 72(sp)
+    sd x11, 80(sp)
+    sd x12, 88(sp)
+    sd x13, 96(sp)
+    sd x14, 104(sp)
+    sd x15, 112(sp)
+    sd x16, 120(sp)
+    sd x17, 128(sp)
+    sd x18, 136(sp)
+    sd x19, 144(sp)
+    sd x20, 152(sp)
+    sd x21, 160(sp)
+    sd x22, 168(sp)
+    sd x23, 176(sp)
+    sd x24, 184(sp)
+    sd x25, 192(sp)
+    sd x26, 200(sp)
+    sd x27, 208(sp)
+    sd x28, 216(sp)
+    sd x29, 224(sp)
+    sd x30, 232(sp)
+    sd x31, 240(sp)
 
-    # 6. Passa o ponteiro do frame (sp atual) em a0 para o C
+    # 3. Chama a função em C passando o SP atual em a0
     mv a0, sp
     call trap_handler
 
-    # --- RESTAURAÇÃO DE CONTEXTO ---
-    # Se o seu scheduler em C trocou de tarefa mudando os valores do ponteiro 'frame',
-    # o 'sp' atualizado já estará apontando para a estrutura da Task 2!
+    # O MIGRATION POINT: 
+    # A função schedule_from_trap retornou o ponteiro do NOVO contexto dentro de 'a0'.
+    # Mudamos o registrador SP para apontar para esse novo bloco de memória!
+    mv sp, a0
 
-    # Restaura o RA da tarefa destino
+    # 4. Restaura os registradores a partir da nova estrutura de dados (Task 2)
     ld x1,  0(sp)
-
-    # Restaura todos os registradores gerais
     ld x3,  16(sp)
     ld x4,  24(sp)
     ld x5,  32(sp)
@@ -93,8 +89,8 @@ trap_entry:
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # 7. Restaura o SP da nova tarefa de forma atômica
+    # 5. Restaura o SP real que a Task 2 usava antes de ser interrompida
     ld sp,  8(sp)
 
-    # Retorna executando a Task 2!
+    # 6. Salta para a Task 2 de forma nativa e sem riscos de corrupção
     sret
