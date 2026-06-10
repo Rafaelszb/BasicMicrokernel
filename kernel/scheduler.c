@@ -3,10 +3,12 @@
 
 extern TCB tasks[];
 extern int task_count;
+
 extern void context_switch(void*, void*);
 
 static int current = 0;
 
+/* Round-Robin padrão */
 static int round_robin()
 {
     if (task_count <= 1) return 0;
@@ -17,40 +19,43 @@ static sched_algo_t current_algo = round_robin;
 
 void scheduler_set_algorithm(sched_algo_t algo)
 {
-    if (algo) current_algo = algo;
+    if (algo)
+        current_algo = algo;
 }
 
-// ALTERAÇÃO: Agora retorna o ponteiro do novo contexto
-uint64_t* schedule_from_trap(uint64_t *frame)
+void schedule_from_trap(uint64_t *frame)
 {
     int prev = current;
     int next = current_algo();
 
-    // Se for a mesma tarefa, retorna o mesmo frame sem alterar nada
+    // Se for a mesma tarefa, não há trabalho a fazer
     if (prev == next) {
-        return frame; 
+        return;
     }
 
-    /* 1. Salva o contexto da tarefa antiga no vetor dela */
+    /* 1. Salvar o frame no TCB da task atual */
     for(int i = 0; i < 32; i++){
         tasks[prev].regs[i] = frame[i];
     }
 
-    /* Salva o sepc da task atual */
+    /* 2. Salvar o CSR sepc */
     uint64_t current_sepc;
     asm volatile("csrr %0, sepc" : "=r"(current_sepc));
     tasks[prev].sepc = current_sepc;
     
-    // Atualiza o índice global da tarefa ativa
+    // Atualiza o ponteiro da tarefa atual antes da cópia
     current = next;
 
-    /* Restaurar sepc da próxima task nos registradores de controle da CPU */
-    asm volatile("csrw sepc, %0" :: "r"(tasks[next].sepc));    
+    /* 4. Copiar o contexto da próxima task para o frame */
+    // SEGURANÇA: Usamos um ponteiro volátil local para garantir que o compilador 
+    // escreva na memória física da pilha antiga sem desviar o fluxo do laço.
+    volatile uint64_t *dest_frame = frame;
+    for(int i = 0; i < 32; i++){
+        dest_frame[i] = tasks[next].regs[i];
+    }
 
-    /* 2. RETORNO DO PULO DO GATO: 
-       Em vez de escrever no frame antigo, passamos o endereço do vetor da nova tarefa.
-       O Assembly vai ler diretamente daqui! */
-    return (uint64_t*)(tasks[next].regs);
+    /* 5. Restaurar o CSR sepc */
+    asm volatile("csrw sepc, %0" :: "r"(tasks[next].sepc));    
 }
 
 /* Yield */
@@ -62,13 +67,17 @@ void yield()
     if (prev == next) return;
 
     current = next;
-    context_switch(tasks[prev].regs, tasks[next].regs);
+
+    context_switch(tasks[prev].regs,
+                   tasks[next].regs);
 }
  
 /* Início */
 void scheduler_start()
 {
-    if (task_count == 0) return;
+    if (task_count == 0)
+        return;
+
     current = 0;
     tasks[0].entry();
 }
