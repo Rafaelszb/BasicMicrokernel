@@ -25,6 +25,7 @@ void xTaskCreate(void (*task)(void),
 
     t->regs[0] = (uint64_t)task;   // ra
     t->regs[1] = (uint64_t)sp;     // sp
+    t->sepc = (uint64_t) task;
 
     t->entry = task;
     t->priority = priority;
