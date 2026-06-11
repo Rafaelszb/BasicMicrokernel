@@ -28,11 +28,6 @@ void schedule_from_trap(uint64_t *frame)
     int prev = current;
     int next = current_algo();
 
-    // Se for a mesma tarefa, não há trabalho a fazer
-    if (prev == next) {
-        return;
-    }
-
     /* TODO: Copiar frame -> tasks[prev].regs*/
     for(int i = 0; i < 32; i++){
         tasks[prev].regs[i] = frame[i];
