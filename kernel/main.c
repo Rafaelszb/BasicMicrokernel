@@ -12,7 +12,6 @@ extern void trap_entry(void);
 
 void task1()
 {
-    asm volatile("csrs sstatus, %0" :: "r"(1ULL << 1));
     while (1)
     {
         uart_print("Task 1 running\n");
@@ -21,7 +20,6 @@ void task1()
 
 void task2()
 {
-    asm volatile("csrs sstatus, %0" :: "r"(1ULL << 1));
     while (1)
     {
         uart_print("Task 2 running\n");
