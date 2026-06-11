@@ -1,17 +1,18 @@
 .section .text
 .global trap_entry
-.align 4
 
 trap_entry:
-    # 1. Aloca o frame de 256 bytes na pilha da tarefa atual
-    addi sp, sp, -256
 
-    # 2. Salva todos os 32 registradores nas posições (0 a 31)
+    addi sp, sp, -256
+    
+    # TODO:
+    # Salvar x1..x31 na stack.
+
     sd x1,  0(sp)           # frame[0] -> ra
     
     # Calcula o SP antigo e põe no frame[1]
     addi x1, sp, 256        
-    sd x1,  8(sp)           # frame[1] -> sp original
+    sd x1,  8(sp)           
     
     # Restaura o x1 temporário
     ld x1,  0(sp)
@@ -48,13 +49,12 @@ trap_entry:
     sd x30, 232(sp)
     sd x31, 240(sp)
 
-    # 3. Chama o trap_handler (void) passando o frame atual em a0
     mv a0, sp
     call trap_handler
 
-    # 4. Restaura os registradores normais
-    # NOTA: Se o seu scheduler rodou (passo 4 do C), os valores contidos 
-    # aqui na memória já foram sobrescrevidos com os dados da Task 2!
+    # TODO:
+    # Restaurar x1..x31 da stack.
+
     ld x1,  0(sp)
     ld x3,  16(sp)
     ld x4,  24(sp)
@@ -86,8 +86,6 @@ trap_entry:
     ld x30, 232(sp)
     ld x31, 240(sp)
 
-    # 5. O CHAVEAMENTO FÍSICO: Carrega o SP modificado pelo passo 4 do seu C.
-    # O registrador SP agora pula atômicamente para o endereço da pilha da Task 2!
     ld sp,  8(sp)
 
     # 6. Salta para a nova tarefa reabilitando interrupções
