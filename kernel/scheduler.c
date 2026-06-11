@@ -33,28 +33,25 @@ void schedule_from_trap(uint64_t *frame)
         return;
     }
 
-    /* 1. Salvar o frame no TCB da task atual */
+    /* TODO: Copiar frame -> tasks[prev].regs*/
     for(int i = 0; i < 32; i++){
         tasks[prev].regs[i] = frame[i];
     }
 
-    /* 2. Salvar o CSR sepc */
+    /* TODO: Salvar sepc da task atual. */
     uint64_t current_sepc;
     asm volatile("csrr %0, sepc" : "=r"(current_sepc));
     tasks[prev].sepc = current_sepc;
-    
-    // Atualiza o ponteiro da tarefa atual antes da cópia
+
     current = next;
 
-    /* 4. Copiar o contexto da próxima task para o frame */
-    // SEGURANÇA: Usamos um ponteiro volátil local para garantir que o compilador 
-    // escreva na memória física da pilha antiga sem desviar o fluxo do laço.
+    /* TODO: Copiar tasks[next].regs -> frame*/
     volatile uint64_t *dest_frame = frame;
     for(int i = 0; i < 32; i++){
         dest_frame[i] = tasks[next].regs[i];
     }
-
-    /* 5. Restaurar o CSR sepc */
+    
+/* TODO: Restaurar sepc da prxima task.*/
     asm volatile("csrw sepc, %0" :: "r"(tasks[next].sepc));    
 }
 
