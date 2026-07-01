@@ -1,7 +1,6 @@
 #include "task.h"
 #include "scheduler.h"
 #include "memory.h"
-#include "timer.h"
 #include "fs.h"
 #include "string.h"
 
